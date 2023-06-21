@@ -1,2 +1,3 @@
 # S1AsmVM
-New S1monsAssemblyVM
+Rewritten and cleaned up S1Asm Virtual Machine. 
+This version supports unittesting directly from Baabnq files, using the '-u' cmd option.
