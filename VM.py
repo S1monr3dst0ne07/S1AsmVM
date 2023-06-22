@@ -70,6 +70,7 @@ import os
 from dataclasses import dataclass
 import operator as oper
 from copy import deepcopy
+from termcolor import colored
 
 from pprint import pprint
 
@@ -90,6 +91,15 @@ class cUtils:
     @staticmethod
     def Lst(x):
         return list(map(lambda y: str(y), x))
+
+    @staticmethod
+    def TRes(xName, xBool):
+        OK = colored("OK", 'green')
+        ERR = colored("ERR", 'red')
+        xStatus = OK if xBool else ERR
+        
+        print(f'[{xStatus}]\t{xName}')
+        
 
 
 class cInt:
@@ -339,11 +349,12 @@ class cProg:
             self.Run()
                         
             #check test evaluation
-            xTestEval = int(cEnv.xStack[0])
-            if xTestEval == 0:
-                print(f"'{xName}' failed")
-                xFailTotal += 1
-        
+            xTestEval = (int(cEnv.xStack[0]) != 0)
+            cUtils.TRes(xName, xTestEval)
+            
+            if not xTestEval: xFailTotal += 1
+
+                
         print(f'Total fails: {xFailTotal}')
         if xFailTotal == 0: print("All tests passed")
 
@@ -421,7 +432,7 @@ class cEnv:
 class cMain:    
     @classmethod
     def ParseArgs(self):
-        xArgParser = argparse.ArgumentParser(description = "S1AsmVM")
+        xArgParser = argparse.ArgumentParser(description = "S1VM")
     
         xArgParser.add_argument("-f", "--file", type=str, dest="path", action="store", nargs=1, required=True, help = "source file")
         xArgParser.add_argument("-n", "--NoNL", dest="NoNL", action="store_true", help = "'out' instruction will not put newline")
