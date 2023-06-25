@@ -100,6 +100,16 @@ class cUtils:
         
         print(f'[{xStatus}]\t{xName}')
         
+    @staticmethod
+    #dumps core trace of cEnv
+    def CoreTrace():
+        x = "\n".join([
+                    f'\tAcc:        {int(cEnv.Acc)}',
+                    f'\tReg:        {int(cEnv.Reg)}',
+                    f'\tHeap Alloc: [{", ".join(cUtils.Lst(cEnv.xHeapAlloc))}]',
+                    f'\tStack:      [{", ".join(cUtils.Lst(cEnv.xStack))}]',
+                ])
+        print(f'--- Core Trace ---\n{x}')
 
 
 class cInt:
@@ -346,13 +356,22 @@ class cProg:
             cEnv.Run = True
             
             #run test
-            self.Run()
-                        
-            #check test evaluation
-            xTestEval = (int(cEnv.xStack[0]) != 0)
-            cUtils.TRes(xName, xTestEval)
+            try:
+                self.Run()
             
-            if not xTestEval: xFailTotal += 1
+            except KeyboardInterrupt: #on user interrupt
+                #after fail test, vm will continue running like format
+                xFailTotal += 1
+                
+                #give core trace
+                cUtils.CoreTrace()
+                                        
+            else: #on test finish
+                #check test evaluation
+                xTestEval = (int(cEnv.xStack[0]) != 0)
+                cUtils.TRes(xName, xTestEval)
+                
+                if not xTestEval: xFailTotal += 1
 
                 
         print(f'Total fails: {xFailTotal}')
@@ -396,7 +415,8 @@ class cProg:
                 xCycleCount += 1
 
         except KeyboardInterrupt:
-            pass
+            if cConfig.Test:
+                raise KeyboardInterrupt
         
         if cConfig.DisplayTime:
             print(f"Execution took {str(xCycleCount)} cycles and {self.Time()} seconds")
