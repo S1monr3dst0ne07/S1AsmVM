@@ -101,23 +101,41 @@ class cUtils:
         print(f'[{xStatus}]\t{xName}')
         
     @staticmethod
+    def DictInv(x):
+        return {k: v for (v, k) in x.items()}
+        
+    @staticmethod
     #dumps core trace of cEnv
-    def CoreTrace():
+    def CoreTrace(xProg):
+        xLabelTrace = [ #pure, black, magic
+                (lambda x: (
+                     (r := ((x >> 1) - 1)),
+                     (cUtils.DictInv(xProg.xLabels)[i.xArg] \
+                        if (i := xProg.xInsts[r]).xOp == cProg.cImpl.fjms \
+                        else '?') \
+                     if r < len(xProg.xInsts) \
+                     else '?'
+                )[-1])(x) for x in cEnv.xStack
+            ]
+        
         x = "\n".join([
                     f'\tAcc:        {int(cEnv.Acc)}',
                     f'\tReg:        {int(cEnv.Reg)}',
                     f'\tHeap Alloc: [{", ".join(cUtils.Lst(cEnv.xHeapAlloc))}]',
                     f'\tStack:      [{", ".join(cUtils.Lst(cEnv.xStack))}]',
+                    f'\tLabelTrace: [{", ".join(cUtils.Lst(xLabelTrace))}]'
                 ])
         print(f'--- Core Trace ---\n{x}')
 
 
+
 class cInt:
     _fs = {
-        "add"     : oper.add,
-        "sub"     : oper.sub,
-        "rshift"  : oper.rshift,
-        "lshift"  : oper.lshift,
+        "add"      : oper.add,
+        "sub"      : oper.sub,
+        "rshift"   : oper.rshift,
+        "lshift"   : oper.lshift,
+        "floordiv" : oper.floordiv,
     }
 
     def __init__(self, xInt = 0, xIntLimit = xIntLimit):
@@ -364,7 +382,7 @@ class cProg:
                 xFailTotal += 1
                 
                 #give core trace
-                cUtils.CoreTrace()
+                cUtils.CoreTrace(self)
                                         
             else: #on test finish
                 #check test evaluation
