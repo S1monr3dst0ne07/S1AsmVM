@@ -67,6 +67,7 @@ import traceback
 import json
 import sys
 import os
+import ast
 from dataclasses import dataclass
 import operator as oper
 from copy import deepcopy
@@ -105,6 +106,15 @@ class cUtils:
         return {k: v for (v, k) in x.items()}
         
     @staticmethod
+    def List2Int(x):
+        return [cInt(i) for i in x]
+
+    @staticmethod
+    def Int2List(x):
+        return [int(i) for i in x]
+        
+        
+    @staticmethod
     #dumps core trace of cEnv
     def CoreTrace(xProg):
         xLabelTrace = [ #pure, black, magic
@@ -126,7 +136,6 @@ class cUtils:
                     f'\tLabelTrace: [{", ".join(cUtils.Lst(xLabelTrace))}]'
                 ])
         print(f'--- Core Trace ---\n{x}')
-
 
 
 class cInt:
@@ -180,15 +189,16 @@ class cConfig:
     PrintCommand = False
     Log          = None
     Test         = None
+    Opti         = False
+    PrintSub     = False
     
     @classmethod
     def ReadArgs(self, xArgs):
-        for x in ["NoNL", "DisplayTime", "PrintCommand", "Log", "Test"]:
+        for x in ["NoNL", "DisplayTime", "PrintCommand", "Log", "Test", "Inter", "Opti", "PrintSub"]:
             xSetng = getattr(xArgs, x)
             setattr(self, x, xSetng)
     
-    
-    
+
 class cProg:
     @dataclass
     class cInst:
@@ -210,7 +220,7 @@ class cProg:
 
     xInsts = []
     xLabels = {}
-    xTests = {}
+    xTests = {}    
     
     def __init__(self, xRaw):
         spce = lambda x: x.replace("  ", " ").strip()
@@ -251,9 +261,13 @@ class cProg:
                 for i in self.xLabels 
                 if i.startswith(cConfig.Test)
             }
-    
+            
+        #invert labels, for opti
+        cEnv._xLabelsInv = {v: k for k, v in self.xLabels.items()}
+        
     #command implementations
-    class cImpl:        
+    class cImpl:
+        
         def fset(self, x): self.Reg(x)
         
         def fadd(self, x): self.Acc += self.Reg
@@ -298,9 +312,18 @@ class cProg:
             self.Reg(0)
         
         def fjms(self, x):
-            xNextInst = (self.xProgIndex + 1) << 1
-            self.xStack.append(xNextInst)
-            self._jmp(self, x)
+            if cConfig.Opti and \
+                (xLabel := self._xLabelsInv[x]) in self._xJmsOptiDict:
+                    self._xJmsOptiDict[xLabel](self)
+                    
+            else:
+                if cConfig.PrintSub:
+                    print(self._xLabelsInv[x])
+            
+            
+                xNextInst = (self.xProgIndex + 1) << 1
+                self.xStack.append(xNextInst)
+                self._jmp(self, x)
         
         def fret(self, x):
             self._slen(self, "Stack Underflow")
@@ -358,24 +381,31 @@ class cProg:
     def Time(self):
         return time.time() - self.xStartTime
 
-    def Test(self):
-    
-        xFailTotal = 0
-        for (xName, xTest) in self.xTests.items():
-            #init env
-            xOoB = (len(self.xInsts) + 1) * 2 #out of bounds
-            
-            cEnv.xProgIndex = xTest
+    def Call(self, xIndex, x = [], xReset = True):
+        xOoB = (len(self.xInsts) + 1) * 2 #out of bounds
+
+        cEnv.xProgIndex = xIndex
+        cEnv.xStack = cUtils.List2Int(x + [xOoB]) #out of bounds return value
+        cEnv.xRun = True
+        
+        if xReset:
             cEnv.Acc(0)
             cEnv.Reg(0)
             cEnv.xHeapAlloc = []
-            cEnv.xStack = [cInt(xInt = xOoB)] #out of bounds return value to make run() exit
             for i in range(xIntLimit): cEnv.xMem[i](0)
-            cEnv.Run = True
-            
+
+        p.Run()
+        return cUtils.Int2List(cEnv.xStack)
+
+
+    def Test(self):
+    
+        xFailTotal = 0
+        for (xName, xTest) in self.xTests.items():            
             #run test
             try:
-                self.Run()
+                xRet = self.Call(xTest)
+                xTestEval = int(xRet[0]) != 0
             
             except KeyboardInterrupt: #on user interrupt
                 #after fail test, vm will continue running like format
@@ -386,7 +416,6 @@ class cProg:
                                         
             else: #on test finish
                 #check test evaluation
-                xTestEval = (int(cEnv.xStack[0]) != 0)
                 cUtils.TRes(xName, xTestEval)
                 
                 if not xTestEval: xFailTotal += 1
@@ -409,7 +438,7 @@ class cProg:
                 if cConfig.Log: xMemOld = [i.x for i in cEnv.xMem]
 
                 #actual vm call                                
-                (xInst := self.xInsts[cEnv.xProgIndex])()            
+                (xInst := self.xInsts[cEnv.xProgIndex])()
                 if cConfig.PrintCommand: print(xInst)
 
                 #render log
@@ -443,6 +472,74 @@ class cProg:
             with open(cConfig.Log, "w") as xFile:
                 xFile.write('\n'.join(xLogFile))
 
+
+    def Interact(self):
+        clear()
+        print("S1VM interactive ('help()' for help)")
+        
+        while True:
+            try:
+                xTerm = input(">>> ")
+                
+                #check empty input
+                if xTerm.strip() == "": continue
+                
+                xAst = ast.parse(xTerm)
+                xByte = compile(xAst, "<ast>", "exec")
+                
+                #switch eval and exec
+                xBody = xAst.body[0]
+                if type(xBody) == ast.Expr:
+                    xBody.lineno = 0
+                    xBody.col_offset = 0
+                    xExpr = compile(ast.Expression(xBody.value, lineno=0, col_offset=0), "<ast>", "eval")
+                    
+                    xRet = eval(xExpr, globals(), locals()) 
+                    print(xRet)
+                    
+                else:
+                    exec(xByte, globals(), locals())
+
+            except KeyboardInterrupt: print()
+            except Exception as xExp:
+                print(xExp)
+
+#prog instance from cMain
+p = None
+        
+#interactive funcs
+help = """
+'exit()'          -> exit
+'clear()'         -> clear screen
+    
+namespaces:
+    -p
+        -Run
+        -Call
+        -xInsts
+        -xLabels
+        -xTests
+    -cConfig
+        -NoNL         : False
+        -DisplayTime  : False
+        -PrintCommand : False
+        -Log          : None
+        -Test         : None
+    -cEnv
+        -Acc
+        -Reg
+        -xHeapSize
+        -xHeapAlloc
+        -xMem
+        -xStack
+        -xProgIndex
+        -xRun
+    
+"""
+
+def exit():     sys.exit(0)
+def clear():    os.system("clear")
+ 
     
 class cEnv:
         
@@ -460,12 +557,23 @@ class cEnv:
     xProgIndex = 0
     xRun = True
 
+    _xLabelsInv = {}
+    _xJmsOptiDict = {
+            "Stack::Swap" : (lambda self: self._OptiSwap(self))
+        
+        }
+
+
     def _jmp(self, x): self.xProgIndex = x - 1
     def _slen(self, xMsg): #error on empty string
         if len(self.xStack) == 0:
             cUtils.Error(xMsg)
-
-
+            
+    #swaps top two stack values
+    def _OptiSwap(self):
+        s = self.xStack
+        s.append(s.pop(-2))
+        
 
 class cMain:    
     @classmethod
@@ -478,6 +586,10 @@ class cMain:
         xArgParser.add_argument("-c", "--PrintCommand", dest="PrintCommand", action="store_true", help = "print the command being currently executed")
         xArgParser.add_argument("-l", "--Log", dest="Log", action="store", help = "log vm state in file")        
         xArgParser.add_argument("-u", "--Unittest", dest="Test", action="store", help = "search for and run unittest given a namespace")
+        xArgParser.add_argument("-i", "--Interact", dest="Inter", action="store_true", help = "run semi-python interactive environment")
+        xArgParser.add_argument("-o", "--Optimize", dest="Opti", action="store_true", help = "optimize execution")
+        xArgParser.add_argument("-s", "--PrintSub", dest="PrintSub", action="store_true", help = "print sub calls")
+        
         return xArgParser.parse_args()
     
     @classmethod
@@ -494,8 +606,13 @@ class cMain:
 
         
         xProg = cProg(xFile)
-        xProg.Test() if cConfig.Test else xProg.Run()
+
+        global p
+        p = xProg
         
+        if cConfig.Test:        xProg.Test()
+        elif cConfig.Inter:     xProg.Interact()
+        else:                   xProg.Run()
             
 if __name__ == '__main__':
     cMain.Main()
