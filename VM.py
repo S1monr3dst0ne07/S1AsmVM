@@ -86,8 +86,7 @@ xIntLimit = 1 << xBitSize
 class cUtils:
     @staticmethod
     def Error(xMsg):
-        print(xMsg)
-        sys.exit(0)
+        raise Exception(xMsg)
 
     @staticmethod
     def Lst(x):
@@ -277,7 +276,7 @@ class cProg:
         def flor(self, x): self.Acc(self.Acc.op(self.Reg, lambda x,y: x|y))
         def fand(self, x): self.Acc(self.Acc.op(self.Reg, lambda x,y: x&y))
         def fxor(self, x): self.Acc(self.Acc.op(self.Reg, lambda x,y: x^y))
-        def fnot(self, x): self.Acc(xIntLimit - self.Acc)
+        def fnot(self, x): self.Acc(xIntLimit - int(self.Acc))
 
         def flda(self, x): self.Acc(self.xMem[x])
         def fldr(self, x): self.Reg(self.xMem[x])
@@ -367,7 +366,7 @@ class cProg:
             
             #override the Acc to return the memory address to the user
             self.Acc(xBasePointer)
-            
+                        
         def ffhm(self, x):
             xFreeSize = int(self.Reg)
             xFreeBase = int(self.Acc)
@@ -464,7 +463,10 @@ class cProg:
         except KeyboardInterrupt:
             if cConfig.Test:
                 raise KeyboardInterrupt
-        
+       
+        except Exception as E:
+            print(E)
+
         if cConfig.DisplayTime:
             print(f"Execution took {str(xCycleCount)} cycles and {self.Time()} seconds")
 
