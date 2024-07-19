@@ -54,10 +54,6 @@ putstr none - print the Acc as ascii
 ahm none - allocate a number of word given by the Reg and put a pointer to the base into the Acc
 fhm none - free a number of word given by the Reg at the address given by the Acc
 
-
-plugin attr - runs plugin with name of attr
-
-
 """
 
 import time
@@ -71,9 +67,17 @@ import ast
 from dataclasses import dataclass
 import operator as oper
 from copy import deepcopy
-from termcolor import colored
+from importlib import reload
 
 from pprint import pprint
+
+try:
+    from termcolor import colored
+    HAVETERMCOLOR = True
+
+except ImportError:
+    HAVETERMCOLOR = False
+
 
 cls         = lambda: print("\033[2J\033[H")
 pprintDict  = lambda s: "\n".join([f"{x: <25}\t : {s[x]}".format() for x in s])
@@ -84,6 +88,11 @@ xIntLimit = 1 << xBitSize
 
 
 class cUtils:
+    OK  = colored("OK" , 'green'  ) if HAVETERMCOLOR else "OK"
+    ERR = colored("ERR", 'red'    ) if HAVETERMCOLOR else "ERR"
+    PNC = colored("PNC", 'magenta') if HAVETERMCOLOR else "PNC"
+
+    
     @staticmethod
     def Error(xMsg):
         raise Exception(xMsg)
@@ -94,11 +103,13 @@ class cUtils:
 
     @staticmethod
     def TRes(xName, xBool):
-        OK = colored("OK", 'green')
-        ERR = colored("ERR", 'red')
-        xStatus = OK if xBool else ERR
+        xStatus = cUtils.OK if xBool else cUtils.ERR
         
         print(f'[{xStatus}]\t{xName}')
+        
+    @staticmethod
+    def TPanic(xName, xMsg):
+        print(f'[{cUtils.PNC}]\t{xName} \n  => {xMsg}')
         
     @staticmethod
     def DictInv(x):
@@ -172,7 +183,10 @@ class cInt:
         return self
         
     #call used to set value
-    def __call__(self, v):    self.x = self.op(v, lambda x,y:y)
+    #def __call__(self, v):    self.x = self.op(v, lambda x,y:y)
+    def __call__(self, v):    
+        if type(v) is int: self.x = v
+        else: self.x = v.x % self.l
     def __int__(self): return self.x
     def __str__(self): return str(self.x)
     
@@ -190,7 +204,9 @@ class cConfig:
     Test         = None
     Opti         = False
     PrintSub     = False
-    
+   
+    PrintError   = True #trace error in interactive mode
+
     @classmethod
     def ReadArgs(self, xArgs):
         for x in ["NoNL", "DisplayTime", "PrintCommand", "Log", "Test", "Inter", "Opti", "PrintSub"]:
@@ -293,7 +309,7 @@ class cProg:
             print(int(self.xMem[x]), end = xEnd)
 
         def finp(self, x):
-            print("inp too lazy")
+            self.xMem[x](int(input()))
         
         def fgot(self, x):                                      self._jmp(self, x)
         def fjm0(self, x): 
@@ -412,6 +428,10 @@ class cProg:
                 
                 #give core trace
                 cUtils.CoreTrace(self)
+
+            except IndexError: #on interface fail
+                xFailTotal += 1
+                cUtils.TPanic(xName, "Malformed Unittest Interface")
                                         
             else: #on test finish
                 #check test evaluation
@@ -477,8 +497,9 @@ class cProg:
 
     def Interact(self):
         clear()
-        print("S1VM interactive ('help()' for help)")
+        print("S1VM interactive ('help' for help)")
         
+        xImports = []
         while True:
             try:
                 xTerm = input(">>> ")
@@ -486,9 +507,21 @@ class cProg:
                 #check empty input
                 if xTerm.strip() == "": continue
                 
+                #reload
+                for xMod in xImports:
+                    xToks = xMod.split(" ")
+                    exec(f'reload({xToks[1]})', globals(), locals())
+                    exec(xMod,                  globals(), locals())
+
                 xAst = ast.parse(xTerm)
                 xByte = compile(xAst, "<ast>", "exec")
                 
+                #record import
+                if 'import' in xTerm:
+                    if 'from' in xTerm:
+                        exec(f'import {xTerm.split(" ")[1]}', globals(), locals())
+                    xImports.append(xTerm)
+
                 #switch eval and exec
                 xBody = xAst.body[0]
                 if type(xBody) == ast.Expr:
@@ -504,7 +537,11 @@ class cProg:
 
             except KeyboardInterrupt: print()
             except Exception as xExp:
-                print(xExp)
+                if cConfig.PrintError:
+                    import traceback
+                    traceback.print_exc()
+                else:
+                    print(xExp)
 
 #prog instance from cMain
 p = None
