@@ -112,6 +112,14 @@ class cUtils:
         print(f'[{cUtils.PNC}]\t{xName} \n  => {xMsg}')
         
     @staticmethod
+    def TReview(xTotal, i, xName):
+        print(f"({xTotal}/{i}) {xName}\033[A")
+        
+    @staticmethod
+    def TClear():
+        print("\33[2K\033[A")
+        
+    @staticmethod
     def DictInv(x):
         return {k: v for (v, k) in x.items()}
         
@@ -415,8 +423,16 @@ class cProg:
 
     def Test(self):
     
+        xTests = self.xTests.items()
+
         xFailTotal = 0
-        for (xName, xTest) in self.xTests.items():            
+        xSuccTotal = 0
+        xTotal = len(xTests)
+
+        for i, (xName, xTest) in enumerate(xTests):
+            
+            cUtils.TReview(xTotal, i, xName)
+            
             #run test
             try:
                 xRet = self.Call(xTest)
@@ -434,14 +450,19 @@ class cProg:
                 cUtils.TPanic(xName, "Malformed Unittest Interface")
                                         
             else: #on test finish
-                #check test evaluation
+                cUtils.TClear()
                 cUtils.TRes(xName, xTestEval)
                 
+                #check test evaluation
                 if not xTestEval: xFailTotal += 1
-
+                else            : xSuccTotal += 1
                 
-        print(f'Total fails: {xFailTotal}')
-        if xFailTotal == 0: print("All tests passed")
+        print("\n")
+        print(f'Total tests    : {xTotal}')
+        print(f'Total fails    : {xFailTotal}')
+        print(f'Total successes: {xSuccTotal}')
+        
+        if xFailTotal == 0: print("\nAll tests passed")
 
 
     def Run(self):
@@ -619,15 +640,15 @@ class cMain:
     def ParseArgs(self):
         xArgParser = argparse.ArgumentParser(description = "S1VM")
     
-        xArgParser.add_argument("-f", "--file", type=str, dest="path", action="store", nargs=1, required=True, help = "source file")
-        xArgParser.add_argument("-n", "--NoNL", dest="NoNL", action="store_true", help = "'out' instruction will not put newline")
-        xArgParser.add_argument("-t", "--Time", dest="DisplayTime", action="store_true", help = "display execution time")
-        xArgParser.add_argument("-c", "--PrintCommand", dest="PrintCommand", action="store_true", help = "print the command being currently executed")
-        xArgParser.add_argument("-l", "--Log", dest="Log", action="store", help = "log vm state in file")        
-        xArgParser.add_argument("-u", "--Unittest", dest="Test", action="store", help = "search for and run unittest given a namespace")
-        xArgParser.add_argument("-i", "--Interact", dest="Inter", action="store_true", help = "run semi-python interactive environment")
-        xArgParser.add_argument("-o", "--Optimize", dest="Opti", action="store_true", help = "optimize execution")
-        xArgParser.add_argument("-s", "--PrintSub", dest="PrintSub", action="store_true", help = "print sub calls")
+        xArgParser.add_argument("-f", "--file",         dest="path",            action="store",         help = "source file", nargs=1, required=True, type=str)
+        xArgParser.add_argument("-n", "--NoNL",         dest="NoNL",            action="store_true",    help = "'out' instruction will not put newline")
+        xArgParser.add_argument("-t", "--Time",         dest="DisplayTime",     action="store_true",    help = "display execution time")
+        xArgParser.add_argument("-c", "--PrintCommand", dest="PrintCommand",    action="store_true",    help = "print the command being currently executed")
+        xArgParser.add_argument("-l", "--Log",          dest="Log",             action="store",         help = "log vm state in file")        
+        xArgParser.add_argument("-u", "--Unittest",     dest="Test",            action="store",         help = "search for and run unittest given a namespace")
+        xArgParser.add_argument("-i", "--Interact",     dest="Inter",           action="store_true",    help = "run semi-python interactive environment")
+        xArgParser.add_argument("-o", "--Optimize",     dest="Opti",            action="store_true",    help = "optimize execution")
+        xArgParser.add_argument("-s", "--PrintSub",     dest="PrintSub",        action="store_true",    help = "print sub calls")
         
         return xArgParser.parse_args()
     
