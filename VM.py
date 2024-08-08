@@ -71,12 +71,6 @@ from importlib import reload
 
 from pprint import pprint
 
-try:
-    from termcolor import colored
-    HAVETERMCOLOR = True
-
-except ImportError:
-    HAVETERMCOLOR = False
 
 
 cls         = lambda: print("\033[2J\033[H")
@@ -84,13 +78,19 @@ pprintDict  = lambda s: "\n".join([f"{x: <25}\t : {s[x]}".format() for x in s])
 
 
 xBitSize = 16
-xIntLimit = 1 << xBitSize     
+xIntLimit = 1 << xBitSize    
 
+
+
+ANSI_ESCCODE_RESET   = "\033[0m"
+ANSI_ESCCODE_GREEN   = "\033[32m"
+ANSI_ESCCODE_RED     = "\033[31m"
+ANSI_ESCCODE_MAGENTA = "\033[35m"
 
 class cUtils:
-    OK  = colored("OK" , 'green'  ) if HAVETERMCOLOR else "OK"
-    ERR = colored("ERR", 'red'    ) if HAVETERMCOLOR else "ERR"
-    PNC = colored("PNC", 'magenta') if HAVETERMCOLOR else "PNC"
+    OK  = f"{ANSI_ESCCODE_GREEN  }OK{ ANSI_ESCCODE_RESET}"
+    ERR = f"{ANSI_ESCCODE_RED    }ERR{ANSI_ESCCODE_RESET}"
+    PNC = f"{ANSI_ESCCODE_MAGENTA}PNC{ANSI_ESCCODE_RESET}"
 
     
     @staticmethod
