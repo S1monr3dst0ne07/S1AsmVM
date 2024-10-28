@@ -215,9 +215,11 @@ class cConfig:
    
     PrintError   = True #trace error in interactive mode
 
+    ExceptOnTestFail = False
+
     @classmethod
     def ReadArgs(self, xArgs):
-        for x in ["NoNL", "DisplayTime", "PrintCommand", "Log", "Test", "Inter", "Opti", "PrintSub"]:
+        for x in ["NoNL", "DisplayTime", "PrintCommand", "Log", "Test", "Inter", "Opti", "PrintSub", "ExceptOnTestFail"]:
             xSetng = getattr(xArgs, x)
             setattr(self, x, xSetng)
     
@@ -464,6 +466,8 @@ class cProg:
         
         if xFailTotal == 0: print("\nAll tests passed")
 
+        if xFailTotal > 0 and cConfig.ExceptOnTestFail:
+            raise Exception(f"{xFailTotal} test(s) failed")
 
     def Run(self):
         xLogFile = []
@@ -640,16 +644,17 @@ class cMain:
     def ParseArgs(self):
         xArgParser = argparse.ArgumentParser(description = "S1VM")
     
-        xArgParser.add_argument("-f", "--file",         dest="path",            action="store",         help = "source file", nargs=1, required=True, type=str)
-        xArgParser.add_argument("-n", "--NoNL",         dest="NoNL",            action="store_true",    help = "'out' instruction will not put newline")
-        xArgParser.add_argument("-t", "--Time",         dest="DisplayTime",     action="store_true",    help = "display execution time")
-        xArgParser.add_argument("-c", "--PrintCommand", dest="PrintCommand",    action="store_true",    help = "print the command being currently executed")
-        xArgParser.add_argument("-l", "--Log",          dest="Log",             action="store",         help = "log vm state in file")        
-        xArgParser.add_argument("-u", "--Unittest",     dest="Test",            action="store",         help = "search for and run unittest given a namespace")
-        xArgParser.add_argument("-i", "--Interact",     dest="Inter",           action="store_true",    help = "run semi-python interactive environment")
-        xArgParser.add_argument("-o", "--Optimize",     dest="Opti",            action="store_true",    help = "optimize execution")
-        xArgParser.add_argument("-s", "--PrintSub",     dest="PrintSub",        action="store_true",    help = "print sub calls")
-        
+        xArgParser.add_argument("-f", "--file",             dest="path",                action="store",         help = "source file", nargs=1, required=True, type=str)
+        xArgParser.add_argument("-n", "--NoNL",             dest="NoNL",                action="store_true",    help = "'out' instruction will not put newline")
+        xArgParser.add_argument("-t", "--Time",             dest="DisplayTime",         action="store_true",    help = "display execution time")
+        xArgParser.add_argument("-c", "--PrintCommand",     dest="PrintCommand",        action="store_true",    help = "print the command being currently executed")
+        xArgParser.add_argument("-l", "--Log",              dest="Log",                 action="store",         help = "log vm state in file")        
+        xArgParser.add_argument("-u", "--Unittest",         dest="Test",                action="store",         help = "search for and run unittest given a namespace")
+        xArgParser.add_argument("-i", "--Interact",         dest="Inter",               action="store_true",    help = "run semi-python interactive environment")
+        xArgParser.add_argument("-o", "--Optimize",         dest="Opti",                action="store_true",    help = "optimize execution")
+        xArgParser.add_argument("-s", "--PrintSub",         dest="PrintSub",            action="store_true",    help = "print sub calls")
+        xArgParser.add_argument("-e", "--ExceptOnTestFail", dest="ExceptOnTestFail",    action="store_true",    help = "after all unittests finish, raises exception if any failed (mainly used for integration)")
+
         return xArgParser.parse_args()
     
     @classmethod
