@@ -346,13 +346,13 @@ class cProg:
                     print(self._xLabelsInv[x])
             
             
-                xNextInst = (self.xProgIndex + 1) << 1
+                xNextInst = (self.xProgIndex + 1)
                 self.xStack.append(xNextInst)
                 self._jmp(self, x)
         
         def fret(self, x):
             self._slen(self, "Stack Underflow")
-            self._jmp(self, self.xStack.pop() >> 1)
+            self._jmp(self, self.xStack.pop())
 
         def fpha(self, x): 
             self.xStack.append(self.Acc.c())
