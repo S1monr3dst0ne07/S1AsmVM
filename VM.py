@@ -211,18 +211,29 @@ class cConfig:
     PrintCommand = False
     Log          = None
     Test         = None
+    Inter        = False #interactive mode
     Opti         = False
     PrintSub     = False
+    TestDebug    = None
    
     PrintError   = True #trace error in interactive mode
 
     ExceptOnTestFail = False
 
+
     @classmethod
-    def ReadArgs(self, xArgs):
-        for x in ["NoNL", "DisplayTime", "PrintCommand", "Log", "Test", "Inter", "Opti", "PrintSub", "ExceptOnTestFail"]:
-            xSetng = getattr(xArgs, x)
-            setattr(self, x, xSetng)
+    def GetMemberVars(cls):
+        attrs = dir(cls)
+        public = filter(lambda x: not x.startswith("__"), attrs)
+        vars = filter(lambda x: not callable(getattr(cls, x)), public)
+        return vars
+
+    @classmethod
+    def ReadArgs(cls, xArgs):
+        for x in cls.GetMemberVars():
+            if hasattr(xArgs, x):
+                xSetng = getattr(xArgs, x)
+                setattr(cls, x, xSetng)
     
 
 class cProg:
@@ -424,7 +435,7 @@ class cProg:
         return cUtils.Int2List(cEnv.xStack)
 
 
-    def Test(self):
+    def Test(self, xFeedback=True):
     
         xTests = self.xTests.items()
 
@@ -434,7 +445,7 @@ class cProg:
 
         for i, (xName, xTest) in enumerate(xTests):
             
-            cUtils.TReview(xTotal, i, xName)
+            if xFeedback: cUtils.TReview(xTotal, i, xName)
             
             #run test
             try:
@@ -453,22 +464,24 @@ class cProg:
                 cUtils.TPanic(xName, "Malformed Unittest Interface")
                                         
             else: #on test finish
-                cUtils.TClear()
-                cUtils.TRes(xName, xTestEval)
+                if xFeedback:
+                    cUtils.TClear()
+                    cUtils.TRes(xName, xTestEval)
                 
                 #check test evaluation
                 if not xTestEval: xFailTotal += 1
                 else            : xSuccTotal += 1
                 
-        print("\n")
-        print(f'Total tests    : {xTotal}')
-        print(f'Total fails    : {xFailTotal}')
-        print(f'Total successes: {xSuccTotal}')
-        
-        if xFailTotal == 0: print("\nAll tests passed")
+        if xFeedback:
+            print("\n")
+            print(f'Total tests    : {xTotal}')
+            print(f'Total fails    : {xFailTotal}')
+            print(f'Total successes: {xSuccTotal}')
+            
+            if xFailTotal == 0: print("\nAll tests passed")
 
-        if xFailTotal > 0 and cConfig.ExceptOnTestFail:
-            raise Exception(f"{xFailTotal} test(s) failed")
+            if xFailTotal > 0 and cConfig.ExceptOnTestFail:
+                raise Exception(f"{xFailTotal} test(s) failed")
 
     def Run(self):
         xLogFile = []
@@ -662,6 +675,7 @@ class cMain:
         xArgParser.add_argument("-o", "--Optimize",         dest="Opti",                action="store_true",    help = "optimize execution")
         xArgParser.add_argument("-s", "--PrintSub",         dest="PrintSub",            action="store_true",    help = "print sub calls")
         xArgParser.add_argument("-e", "--ExceptOnTestFail", dest="ExceptOnTestFail",    action="store_true",    help = "after all unittests finish, raises exception if any failed (mainly used for integration)")
+        xArgParser.add_argument("-U", "--UnittestDebug",    dest="TestDebug",           action="store_true",    help = "turn off unittest feedback to speed up debugging")
 
         return xArgParser.parse_args()
     
@@ -682,8 +696,8 @@ class cMain:
 
         global p
         p = xProg
-        
-        if cConfig.Test:        xProg.Test()
+
+        if cConfig.Test:        xProg.Test(xFeedback=(not cConfig.TestDebug))
         elif cConfig.Inter:     xProg.Interact()
         else:                   xProg.Run()
             
