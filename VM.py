@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 """
 Acc - Accumolator
 Reg - Register
@@ -570,6 +571,10 @@ class cProg:
 
 #prog instance from cMain
 p = None
+def lkup(label): return p.xLabels[label]
+def rn(label):   return p.Call(lkup(label))
+def dmp(addr, len): return [int(x) for x in cEnv.xMem[addr:addr+len]]
+
         
 #interactive funcs
 help = """
@@ -598,6 +603,9 @@ namespaces:
         -xStack
         -xProgIndex
         -xRun
+
+    -lkup
+    -rn
     
 """
 
