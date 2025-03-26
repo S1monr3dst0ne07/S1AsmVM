@@ -138,7 +138,7 @@ class cUtils:
     def CoreTrace(xProg):
         xLabelTrace = [ #pure, black, magic
                 (lambda x: (
-                     (r := ((x >> 1) - 1)),
+                     (r := (x - 1)),
                      (cUtils.DictInv(xProg.xLabels)[i.xArg] \
                         if (i := xProg.xInsts[r]).xOp == cProg.cImpl.fjms \
                         else '?') \
